@@ -785,113 +785,136 @@
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
- <script>
-    let medicineData = [];
-    let shelfMap = {};
+<script>
+  let medicineData = [];
+  let shelfMap = {};
 
-document.getElementById("excelFile").addEventListener("change", function(e) {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
+  // Excelファイル読み込み
+  document.getElementById("excelFile").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
 
-    // --- 薬品シート ---
-    const sheetMedicine = workbook.Sheets["薬品"];
-    const rowsMedicine = XLSX.utils.sheet_to_json(sheetMedicine, { header: 1 });
+      // --- 薬品シート ---
+      const sheetMedicine = workbook.Sheets["薬品"];
+      const rowsMedicine = XLSX.utils.sheet_to_json(sheetMedicine, { header: 1 });
 
-    medicineData = [];
-    rowsMedicine.forEach((row) => {
-      const name = row[0];   // A列：薬品名
-      const shelfNo = row[1]; // B列：棚番号
-      const x = row[3];      // D列：横位置
-      const y = row[5];      // F列：縦位置
+      medicineData = [];
+      rowsMedicine.forEach((row) => {
+        const name = row[0];   // A列：薬品名
+        const shelfNo = row[1]; // B列：棚番号（数字 or 文字）
+        const x = row[3];      // D列：横位置
+        const y = row[5];      // F列：縦位置
 
-      // 薬品名がある行は必ず読み込む
-      if (name) {
-        medicineData.push({
-          name: String(name).trim(),
-          shelfNo: shelfNo ? String(shelfNo).trim() : "",
-          x: x ? String(x).trim() : "",
-          y: y ? String(y).trim() : ""
-        });
-      }
-    });
+        if (name) {
+          medicineData.push({
+            name: String(name).trim(),
+            shelfNo: shelfNo ? String(shelfNo).trim() : "",
+            x: x ? String(x).trim() : "",
+            y: y ? String(y).trim() : ""
+          });
+        }
+      });
 
-    // --- 棚シート ---
-    const sheetShelf = workbook.Sheets["棚"];
-    const rowsShelf = XLSX.utils.sheet_to_json(sheetShelf, { header: 1 });
+      // --- 棚シート ---
+      const sheetShelf = workbook.Sheets["棚"];
+      const rowsShelf = XLSX.utils.sheet_to_json(sheetShelf, { header: 1 });
 
-    shelfMap = {};
-    rowsShelf.forEach((row) => {
-      const shelfNo2 = row[0]; // A列：棚番号
-      const shelfName = row[1]; // B列：棚名
-      const shelfId = row[2];   // C列：棚ID
+      shelfMap = {};
+      rowsShelf.forEach((row) => {
+        const shelfNo2 = row[0]; // A列：棚番号
+        const shelfName = row[1]; // B列：棚名
+        const shelfId = row[2];   // C列：棚ID
 
-      if (shelfNo2 && shelfId) {
-        shelfMap[String(shelfNo2).trim()] = {
-          name: String(shelfName || "").trim(),
-          id: String(shelfId).trim()
-        };
-      }
-    });
+        if (shelfNo2 && shelfId) {
+          const keyStr = String(shelfNo2).trim();
+          shelfMap[keyStr] = {
+            name: String(shelfName || "").trim(),
+            id: String(shelfId).trim()
+          };
+          if (/^[0-9]+$/.test(keyStr)) {
+            shelfMap[Number(keyStr)] = {
+              name: String(shelfName || "").trim(),
+              id: String(shelfId).trim()
+            };
+          }
+        }
+      });
 
-    console.log("読み込んだ薬品名件数:", medicineData.length);
-    console.log("読み込んだ薬品名一覧:", medicineData.map(item => item.name));
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-
-
-document.getElementById("medicineInput").addEventListener("input", function() {
-  const input = this.value.trim();
-  const suggestList = document.getElementById("suggestList");
-  suggestList.innerHTML = "";
-
-  if (input === "") return;
-
-  // 正規化関数（検索用）
-  const normalize = str => str
-    ? str.normalize("NFKC")   // 全角/半角・濁点の揺れを統一
-        .toLowerCase()        // 大文字小文字を統一
-        .replace(/\s+/g, "")  // スペース除去
-        // ひらがなをカタカナに変換
-        .replace(/[\u3041-\u3096]/g, ch =>
-          String.fromCharCode(ch.charCodeAt(0) + 0x60)
-        )
-    : "";
-
-  const normInput = normalize(input);
-
-  const matches = medicineData.filter(item =>
-    normalize(item.name).includes(normInput)
-  );
-
-  matches.forEach(item => {
-    const li = document.createElement("li");
-    // 候補表示は Excel に登録された薬品名そのまま
-    li.textContent = item.name;
-    li.onclick = () => {
-      document.getElementById("medicineInput").value = item.name;
-      suggestList.innerHTML = "";
-
-      const shelfInfo = shelfMap[item.shelfNo] || { name: "-", id: "-" };
-      document.getElementById("shelfName").textContent = shelfInfo.name;
-      document.getElementById("shelfX").textContent = item.x;
-      document.getElementById("shelfY").textContent = item.y;
-
-      document.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
-      const targetCell = document.getElementById(shelfInfo.id);
-      if (targetCell) targetCell.classList.add("highlight");
+      console.log("読み込んだ薬品名件数:", medicineData.length);
     };
-    suggestList.appendChild(li);
+    reader.readAsArrayBuffer(file);
   });
-});
+
+  // 入力欄の予測候補
+  document.getElementById("medicineInput").addEventListener("input", function() {
+    const input = this.value.trim();
+    const suggestList = document.getElementById("suggestList");
+    suggestList.innerHTML = "";
+
+    if (input === "") return;
+
+    const normalize = str => str
+      ? str.normalize("NFKC")
+          .toLowerCase()
+          .replace(/\s+/g, "")
+          .replace(/[\u3041-\u3096]/g, ch =>
+            String.fromCharCode(ch.charCodeAt(0) + 0x60)
+          )
+      : "";
+
+    const normInput = normalize(input);
+
+    const matches = medicineData.filter(item =>
+      normalize(item.name).includes(normInput)
+    );
+
+    matches.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item.name;
+      li.onclick = () => {
+        document.getElementById("medicineInput").value = item.name;
+        suggestList.innerHTML = "";
+
+        let shelfNameDisplay = "-";
+        let shelfId = null;
+
+        if (item.shelfNo) {
+          const half = item.shelfNo.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+          if (/^[0-9]+$/.test(half)) {
+            const asNum = Number(half);
+            const shelfInfo = shelfMap[asNum] || shelfMap[half];
+            if (shelfInfo) {
+              shelfNameDisplay = shelfInfo.name;
+              shelfId = shelfInfo.id;
+            }
+          } else {
+            // 数字以外 → そのまま表示
+            shelfNameDisplay = item.shelfNo;
+          }
+        }
+
+        document.getElementById("shelfName").textContent = shelfNameDisplay;
+        document.getElementById("shelfX").textContent = item.x;
+        document.getElementById("shelfY").textContent = item.y;
+
+        document.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
+        if (shelfId) {
+          const targetCell = document.getElementById(shelfId);
+          if (targetCell) targetCell.classList.add("highlight");
+        }
+      };
+      suggestList.appendChild(li);
+    });
+  });
 </script>
 
 </body>
 
 </html>
+
 
 

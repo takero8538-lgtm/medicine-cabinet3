@@ -1,7 +1,7 @@
 {
   "name": "薬品棚検索",
   "short_name": "棚検索",
-  "start_url": "./",
+  "start_url": "/medicine-cabinet3/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4CAF50",
@@ -17,4 +17,5 @@
       "type": "image/png"
     }
   ]
+
 }

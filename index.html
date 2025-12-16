@@ -968,22 +968,13 @@ document.getElementById("selectFileBtn").addEventListener("click", () => {
 // --- サービスワーカー登録 ---
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js")
+    navigator.serviceWorker.register("/medicine-cabinet3/service-worker.js")
       .then(reg => console.log("Service Worker registered:", reg.scope))
       .catch(err => console.error("Service Worker registration failed:", err));
   });
 }
 
 
-  
 </script>
-
-
 </body>
-
 </html>
-
-
-
-
-
